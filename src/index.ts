@@ -8,6 +8,9 @@ import type { RpsAI } from './ai/RpsAI.ts'
 dotenv.config()
 
 console.clear()
+
+let thinkingInProgress = false
+
 const sdk: IBotSDK = new BotSDK()
 
 const ai: RpsAI = new SimplestRpsAI(sdk)
@@ -34,9 +37,10 @@ sdk.onDisconnect((code) => {
   }, 2000)
 })
 
-sdk.onPosition<Round[]>((p) => {
-  console.log(p)
-  if (p.needMove) {
+sdk.onPosition<Round[]>(async (p) => {
+  if (p.needMove && !thinkingInProgress) {
+    thinkingInProgress = true
+
     ai.getBestMove(p)
       .then((move) => {
         sdk.move(p.tableId!, move).catch((err) => {
@@ -45,6 +49,9 @@ sdk.onPosition<Round[]>((p) => {
       })
       .catch((err) => {
         console.error('Error getting best move:', err)
+      })
+      .finally(() => {
+        thinkingInProgress = false
       })
   }
 })

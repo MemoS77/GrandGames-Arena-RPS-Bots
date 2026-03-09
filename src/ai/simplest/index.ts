@@ -25,13 +25,17 @@ export default class SimplestRpsAI extends RpsAI {
   override async getBestMove(pos: PositionInfo<Round[]>): Promise<Move> {
     if (!this.greetingSent.has(pos.tableId)) {
       this.greetingSent.add(pos.tableId)
-      this.sdk.message(
-        pos.tableId,
-        `Hello! I am a simple bot. I will play randomly.`,
-      )
+
+      setTimeout(() => {
+        this.sdk.message(
+          pos.tableId,
+          `Hello! I am a simple bot. I will play randomly.`,
+        )
+      }, 1000)
     }
     const moves = ['r', 'p', 's']
     const move = moves[Math.floor(Math.random() * 3)]!
+
     return move as Move
   }
 }
