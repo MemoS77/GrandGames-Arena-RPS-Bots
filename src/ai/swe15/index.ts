@@ -297,6 +297,8 @@ export default class NormalRpsAI extends RpsAI {
   override async getBestMove(pos: PositionInfo<GamePosition>): Promise<Move> {
     this.sendGreeting(pos)
 
+    //console.log(pos.position.rounds)
+
     const enemy = pos.players.find(
       (p) => p !== null && p.login !== this.botLogin,
     )
