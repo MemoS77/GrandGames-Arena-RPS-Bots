@@ -1,0 +1,65 @@
+services:
+  bot-opus:
+    build: .
+    environment:
+      - TOKEN=${TOKEN_OPUS}
+      - AI=opus
+      - DEBUG=false
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
+    restart: unless-stopped
+
+  bot-codex:
+    build: .
+    environment:
+      - TOKEN=${TOKEN_CODEX}
+      - AI=codex
+      - DEBUG=false
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
+    restart: unless-stopped
+
+  bot-random:
+    build: .
+    environment:
+      - TOKEN=${TOKEN_RANDOM}
+      - AI=random
+      - DEBUG=false
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
+    restart: unless-stopped
+
+  bot-swe15:
+    build: .
+    environment:
+      - TOKEN=${TOKEN_SWE15}
+      - AI=swe15
+      - DEBUG=false
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
+    restart: unless-stopped
+
+  bot-gpt:
+    build: .
+    environment:
+      - TOKEN=${TOKEN_GPT}
+      - AI=gpt
+      - DEBUG=false
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
+    restart: unless-stopped
