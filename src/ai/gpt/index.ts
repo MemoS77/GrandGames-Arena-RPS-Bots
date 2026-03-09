@@ -1,336 +1,301 @@
 import { IS_DEBUG } from '../../conf.ts'
 import type { PositionInfo } from '../../sdk/IBotSDK.ts'
 import { RpsAI } from '../RpsAI.js'
-import type { GamePosition, Move } from '../types.ts'
+import type { GamePosition, Move, Round } from '../types.ts'
 
-const MOVES: Move[] = ['r', 'p', 's']
+type MoveChar = 'r' | 'p' | 's'
 
-const BEAT: Record<Move, Move> = {
+const MOVES: MoveChar[] = ['r', 'p', 's']
+
+const COUNTER: Record<MoveChar, MoveChar> = {
   r: 'p',
   p: 's',
   s: 'r',
-  h: 'r',
 }
 
-const TTL = 1000 * 60 * 60 * 48
-
-type Predictor =
-  | 'freq'
-  | 'markov1'
-  | 'markov2'
-  | 'pattern'
-  | 'antiLose'
-  | 'antiWin'
-  | 'mirror'
-  | 'bias'
-
-type Meta = 0 | 1 | 2
-
-type PredictorState = {
-  lastPred: Move | null
-  score: number
+const LOSE_TO: Record<MoveChar, MoveChar> = {
+  r: 's',
+  p: 'r',
+  s: 'p',
 }
 
 type PlayerStats = {
-  updated: number
+  lastUpdate: number
 
-  history: Move[]
-  myHistory: Move[]
+  total: Record<MoveChar, number>
 
-  processedRounds: number
+  transitions: Record<string, Record<MoveChar, number>>
 
-  moveCount: Record<Move, number>
-
-  trans1: Record<Move, Record<Move, number>>
-  trans2: Record<string, Record<Move, number>>
-
-  predictors: Map<string, PredictorState>
+  transitions2: Record<string, Record<MoveChar, number>>
 }
 
-export default class MonsterRpsAI extends RpsAI {
-  private players = new Map<string, PlayerStats>()
+export default class SmartRpsAI extends RpsAI {
+  private greetingSent = new Set<number>()
+
+  private memory = new Map<string, PlayerStats>()
+
+  private TTL = 1000 * 60 * 60 * 48
 
   override async init(botLogin: string) {
-    super.init(botLogin)
+    await super.init(botLogin)
 
-    setInterval(
-      () => {
-        const now = Date.now()
-
-        for (const [login, stat] of this.players) {
-          if (now - stat.updated > TTL) {
-            this.players.delete(login)
-          }
-        }
-
-        if (IS_DEBUG) console.log('[RPS-AI] cleanup')
-      },
-      1000 * 60 * 10,
-    )
+    setInterval(() => this.cleanup(), 1000 * 60 * 30)
   }
 
-  private debug(...a: any[]) {
-    if (IS_DEBUG) console.log('[RPS-AI]', ...a)
+  private cleanup() {
+    const now = Date.now()
+
+    for (const [k, v] of this.memory) {
+      if (now - v.lastUpdate > this.TTL) {
+        this.memory.delete(k)
+      }
+    }
   }
 
-  private getPlayer(login: string): PlayerStats {
-    let p = this.players.get(login)
+  private getEnemy(pos: PositionInfo<GamePosition>) {
+    return pos.players.find((p) => p && p.login !== this.botLogin)
+  }
 
-    if (!p) {
-      p = {
-        updated: Date.now(),
+  private getStats(login: string): PlayerStats {
+    let s = this.memory.get(login)
 
-        history: [],
-        myHistory: [],
+    if (!s) {
+      s = {
+        lastUpdate: Date.now(),
 
-        processedRounds: 0,
+        total: { r: 0, p: 0, s: 0 },
 
-        moveCount: { r: 0, p: 0, s: 0, h: 0 },
+        transitions: {},
 
-        trans1: {
-          r: { r: 0, p: 0, s: 0, h: 0 },
-          p: { r: 0, p: 0, s: 0, h: 0 },
-          s: { r: 0, p: 0, s: 0, h: 0 },
-          h: { r: 0, p: 0, s: 0, h: 0 },
-        },
-
-        trans2: {},
-
-        predictors: new Map(),
+        transitions2: {},
       }
 
-      this.players.set(login, p)
+      this.memory.set(login, s)
     }
 
-    return p
+    return s
   }
 
-  private key(p: Predictor, meta: Meta) {
-    return `${p}:${meta}`
-  }
+  private updateStats(login: string, rounds: Round[]) {
+    const stats = this.getStats(login)
 
-  private getPredictor(
-    p: PlayerStats,
-    name: Predictor,
-    meta: Meta,
-  ): PredictorState {
-    const k = this.key(name, meta)
+    stats.lastUpdate = Date.now()
 
-    if (!p.predictors.has(k)) {
-      p.predictors.set(k, { lastPred: null, score: 0 })
+    const enemyMoves: MoveChar[] = []
+
+    for (const r of rounds) {
+      const m = r[0]
+
+      const e = r[1]
+
+      if (e && e !== 'h') {
+        enemyMoves.push(e as MoveChar)
+      }
     }
 
-    return p.predictors.get(k)!
+    if (enemyMoves.length === 0) return
+
+    const last = enemyMoves[enemyMoves.length - 1]
+    if (!last) return
+
+    stats.total[last]++
+
+    if (enemyMoves.length >= 2) {
+      const k = enemyMoves[enemyMoves.length - 2]
+      if (!k) return
+
+      const map = (stats.transitions[k] ||= { r: 0, p: 0, s: 0 })
+
+      map[last]++
+    }
+
+    if (enemyMoves.length >= 3) {
+      const k = enemyMoves.slice(-3, -1).join('')
+
+      const map = (stats.transitions2[k] ||= { r: 0, p: 0, s: 0 })
+
+      map[last!]++
+    }
   }
 
-  private record(p: PlayerStats, enemy: Move, mine: Move) {
-    const last = p.history[p.history.length - 1]
-    const last2 = p.history[p.history.length - 2]
+  private normalize(counts: Record<MoveChar, number>) {
+    const s = counts.r + counts.p + counts.s
 
-    p.moveCount[enemy]++
+    if (s === 0) return { r: 1 / 3, p: 1 / 3, s: 1 / 3 }
 
-    if (last) p.trans1[last][enemy]++
+    return {
+      r: counts.r / s,
 
-    if (last && last2) {
-      const k = last2 + last
+      p: counts.p / s,
 
-      if (!p.trans2[k]) {
-        p.trans2[k] = { r: 0, p: 0, s: 0, h: 0 }
+      s: counts.s / s,
+    }
+  }
+
+  private merge(
+    a: Record<MoveChar, number>,
+    b: Record<MoveChar, number>,
+    w: number,
+  ) {
+    a.r += b.r * w
+
+    a.p += b.p * w
+
+    a.s += b.s * w
+  }
+
+  private predict(login: string, rounds: Round[]) {
+    const stats = this.getStats(login)
+
+    const prob = { r: 0, p: 0, s: 0 }
+
+    const debug: any = {}
+
+    const freq = this.normalize(stats.total)
+
+    this.merge(prob, freq, 1)
+
+    debug.freq = freq
+
+    const enemyMoves: MoveChar[] = []
+
+    for (const r of rounds) {
+      const e = r[1]
+
+      if (e && e !== 'h') enemyMoves.push(e as MoveChar)
+    }
+
+    if (enemyMoves.length >= 1) {
+      const last = enemyMoves[enemyMoves.length - 1]
+      if (!last) return
+
+      const t = stats.transitions[last]
+      if (!t) return
+
+      if (t) {
+        const p = this.normalize(t)
+
+        this.merge(prob, p, 2)
+
+        debug.markov1 = p
       }
 
-      p.trans2[k][enemy]++
+      const repeat: { r: number; p: number; s: number } = { r: 0, p: 0, s: 0 }
+
+      repeat[last] += 1
+
+      this.merge(prob, repeat, 0.6)
+
+      debug.repeat = repeat
+
+      const counter: { r: number; p: number; s: number } = { r: 0, p: 0, s: 0 }
+
+      counter[COUNTER[last]] += 1
+
+      this.merge(prob, counter, 0.7)
+
+      debug.counter = counter
     }
 
-    p.history.push(enemy)
-    p.myHistory.push(mine)
+    if (enemyMoves.length >= 2) {
+      const k = enemyMoves.slice(-2).join('')
 
-    if (p.history.length > 200) p.history.shift()
-    if (p.myHistory.length > 200) p.myHistory.shift()
+      const t = stats.transitions2[k]
 
-    p.updated = Date.now()
+      if (t) {
+        const p = this.normalize(t)
+
+        this.merge(prob, p, 3)
+
+        debug.markov2 = p
+      }
+    }
+
+    const sum = prob.r + prob.p + prob.s
+
+    prob.r /= sum
+
+    prob.p /= sum
+
+    prob.s /= sum
+
+    debug.final = prob
+
+    return { prob, debug }
   }
 
-  private predictFrequency(p: PlayerStats): Move | null {
-    const { r, p: pa, s } = p.moveCount
+  private bestResponse(prob: Record<MoveChar, number>): MoveChar {
+    let best = 'r'
 
-    const max = Math.max(r, pa, s)
+    let bestScore = -Infinity
 
-    if (max === 0) return null
+    for (const m of MOVES) {
+      const win = prob[LOSE_TO[m]]
 
-    if (max === r) return 'r'
-    if (max === pa) return 'p'
-    return 's'
+      const lose = prob[COUNTER[m]]
+
+      const score = win - lose
+
+      if (score > bestScore) {
+        bestScore = score
+
+        best = m
+      }
+    }
+
+    return best as MoveChar
   }
 
-  private predictMarkov1(p: PlayerStats): Move | null {
-    const last = p.history.at(-1)
+  private sendGreeting(pos: PositionInfo<GamePosition>) {
+    if (!this.greetingSent.has(pos.tableId)) {
+      this.greetingSent.add(pos.tableId)
 
-    if (!last) return null
+      const enemy = this.getEnemy(pos)
 
-    const t = p.trans1[last]
-
-    const max = Math.max(t.r, t.p, t.s)
-
-    if (max === 0) return null
-
-    if (max === t.r) return 'r'
-    if (max === t.p) return 'p'
-    return 's'
-  }
-
-  private predictMarkov2(p: PlayerStats): Move | null {
-    if (p.history.length < 2) return null
-
-    const last = p.history.at(-1)!
-    const prev = p.history.at(-2)!
-
-    const key = prev + last
-    const t = p.trans2[key]
-
-    if (!t) return null
-
-    const max = Math.max(t.r, t.p, t.s)
-
-    if (max === 0) return null
-
-    if (max === t.r) return 'r'
-    if (max === t.p) return 'p'
-    return 's'
-  }
-
-  private predictPattern(p: PlayerStats): Move | null {
-    const h = p.history
-
-    if (h.length < 6) return null
-
-    const a = h.slice(-3).join('')
-    const b = h.slice(-6, -3).join('')
-
-    if (a === b) return h.at(-3) ?? null
-
-    return null
-  }
-
-  private predictAntiLose(p: PlayerStats): Move | null {
-    const my = p.myHistory.at(-1)
-    const en = p.history.at(-1)
-
-    if (!my || !en) return null
-
-    if (BEAT[en] === my) return BEAT[en]
-
-    return null
-  }
-
-  private predictAntiWin(p: PlayerStats): Move | null {
-    const my = p.myHistory.at(-1)
-    const en = p.history.at(-1)
-
-    if (!my || !en) return null
-
-    if (BEAT[my] === en) return en
-
-    return null
-  }
-
-  private predictMirror(p: PlayerStats): Move | null {
-    return p.myHistory.at(-1) ?? null
-  }
-
-  private predictBias(): Move {
-    const x = Math.random()
-
-    if (x < 0.36) return 'r'
-    if (x < 0.69) return 'p'
-    return 's'
-  }
-
-  private applyMeta(pred: Move, meta: Meta): Move {
-    if (meta === 0) return pred
-    if (meta === 1) return BEAT[pred]
-    return BEAT[BEAT[pred]]
+      setTimeout(() => {
+        this.sdk.message(pos.tableId, `Hello ${enemy?.login}! Let's play.`)
+      }, 0)
+    }
   }
 
   override async getBestMove(pos: PositionInfo<GamePosition>): Promise<Move> {
-    const myIndex = pos.botIndex
+    this.sendGreeting(pos)
 
-    if (myIndex === undefined || myIndex === null) return 'r'
+    const enemy = this.getEnemy(pos)
 
-    const enemyIndex = myIndex === 0 ? 1 : 0
-
-    const enemy = pos.players[enemyIndex]
-
-    if (!enemy) return 'r'
-
-    const p = this.getPlayer(enemy.login)
-
-    this.debug('rounds', pos.position.rounds.length)
-
-    for (let i = p.processedRounds; i < pos.position.rounds.length; i++) {
-      const r = pos.position.rounds[i]
-      if (!r) continue
-
-      const mine = r[myIndex]
-      const en = r[enemyIndex]
-
-      if (mine && en && mine !== 'h' && en !== 'h') {
-        this.record(p, en, mine)
-      }
+    if (!enemy) {
+      return MOVES[Math.floor(Math.random() * 3)] as Move
     }
 
-    p.processedRounds = pos.position.rounds.length
+    const rounds = pos.position.rounds
 
-    const predictions: Record<Predictor, Move | null> = {
-      freq: this.predictFrequency(p),
-      markov1: this.predictMarkov1(p),
-      markov2: this.predictMarkov2(p),
-      pattern: this.predictPattern(p),
-      antiLose: this.predictAntiLose(p),
-      antiWin: this.predictAntiWin(p),
-      mirror: this.predictMirror(p),
-      bias: this.predictBias(),
+    this.updateStats(enemy.login, rounds)
+
+    const res = this.predict(enemy.login, rounds)
+    if (!res) return MOVES[Math.floor(Math.random() * 3)] as Move
+
+    const { prob, debug } = res
+
+    const move = this.bestResponse(prob)
+
+    if (IS_DEBUG) {
+      console.log('----- RPS AI DEBUG -----')
+
+      console.log('Enemy:', enemy.login)
+
+      console.log('Rounds:', rounds)
+
+      console.log('Prediction:', debug)
+
+      console.log('Chosen move:', move)
+
+      console.log('------------------------')
     }
 
-    this.debug('predictions', predictions)
-
-    const votes: Record<Move, number> = { r: 0, p: 0, s: 0, h: 0 }
-
-    for (const name in predictions) {
-      const pred = predictions[name as Predictor]
-
-      if (!pred) continue
-
-      for (const meta of [0, 1, 2] as Meta[]) {
-        const st = this.getPredictor(p, name as Predictor, meta)
-
-        const move = this.applyMeta(pred, meta)
-
-        votes[BEAT[move]] += 1 + st.score * 0.1
-
-        st.lastPred = move
-      }
-    }
-
-    this.debug('votes', votes)
-
-    let best: Move[] = []
-    let max = -Infinity
-
-    for (const m of MOVES) {
-      if (votes[m] > max) {
-        max = votes[m]
-        best = [m]
-      } else if (votes[m] === max) {
-        best.push(m)
-      }
-    }
-
-    const move = best[Math.floor(Math.random() * best.length)]
-
-    this.debug('selected', move)
-
-    return move ?? 'r'
+    return move as Move
   }
 
-  override onGameEnd(): void {}
+  override onGameEnd(tableId: number) {
+    this.greetingSent.delete(tableId)
+  }
 }
