@@ -1,20 +1,16 @@
 import BotSDK from './sdk/arena-bot-node-sdk.js'
 import { TableState, type IBotSDK, type PositionInfo } from './sdk/IBotSDK.ts'
-import dotenv from 'dotenv'
+
 import type { GamePosition } from './ai/types.ts'
 import AI from './ai/opus/index.ts'
 import type { RpsAI } from './ai/RpsAI.ts'
-
-dotenv.config()
+import { TOKEN } from './conf.ts'
 
 console.clear()
 
 const sdk: IBotSDK = new BotSDK()
 
 const ai: RpsAI = new AI(sdk)
-
-const token = process.env.JWT
-if (!token) throw 'Please, set JWT in .env file'
 
 type PositionItem = PositionInfo<GamePosition>
 
@@ -78,7 +74,7 @@ sdk.onPosition<GamePosition>((p) => {
 
 const connect = () => {
   sdk
-    .connect(token, { games: [14] })
+    .connect(TOKEN!, { games: [14] })
     .then((v) => {
       console.log('Connectded! User info: ', v)
       ai.init(v.login)

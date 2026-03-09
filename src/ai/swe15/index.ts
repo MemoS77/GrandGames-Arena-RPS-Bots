@@ -1,8 +1,7 @@
+import { IS_DEBUG } from '../../conf.ts'
 import type { PositionInfo } from '../../sdk/IBotSDK.ts'
 import { RpsAI } from '../RpsAI.js'
 import { Move, type GamePosition, type Round } from '../types.ts'
-
-const IS_DEBUG = true
 
 interface PlayerStats {
   moveHistory: Move[]

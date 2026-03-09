@@ -1,3 +1,4 @@
+import { IS_DEBUG } from '../../conf.ts'
 import type { PositionInfo } from '../../sdk/IBotSDK.ts'
 import { RpsAI } from '../RpsAI.js'
 import { Move, type GamePosition } from '../types.ts'
@@ -8,8 +9,6 @@ import { Move, type GamePosition } from '../types.ts'
 // Uses ensemble of multiple prediction strategies with dynamic weight adjustment
 // based on each strategy's historical accuracy.
 // ============================================================================
-
-const IS_DEBUG = true
 
 type RealMove = 'r' | 'p' | 's'
 const REAL_MOVES: RealMove[] = ['r', 'p', 's']
