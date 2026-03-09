@@ -1,5 +1,5 @@
 import BotSDK from './sdk/arena-bot-node-sdk.js'
-import type { IBotSDK } from './sdk/IBotSDK.ts'
+import type { IBotSDK, PositionInfo } from './sdk/IBotSDK.ts'
 import dotenv from 'dotenv'
 import type { Round } from './ai/types.ts'
 import SimplestRpsAI from './ai/simplest/index.ts'
@@ -9,14 +9,68 @@ dotenv.config()
 
 console.clear()
 
-let thinkingInProgress = false
-
 const sdk: IBotSDK = new BotSDK()
 
 const ai: RpsAI = new SimplestRpsAI(sdk)
 
 const token = process.env.JWT
 if (!token) throw 'Please, set JWT in .env file'
+
+type PositionItem = PositionInfo<Round[]>
+
+const positionQueue: PositionItem[] = []
+let processingKey: string | null = null
+
+const simpleHash = (str: string): number => {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0
+  }
+  return hash
+}
+
+const getPositionKey = (p: PositionItem): string => {
+  return `${p.tableId}:${simpleHash(JSON.stringify(p.position))}`
+}
+
+const processQueue = async () => {
+  if (processingKey !== null || positionQueue.length === 0) return
+
+  const p = positionQueue.shift()!
+  processingKey = getPositionKey(p)
+
+  try {
+    const move = await ai.getBestMove(p)
+    await sdk.move(p.tableId!, move)
+  } catch (err) {
+    console.error('Error processing position:', err)
+  } finally {
+    processingKey = null
+    processQueue()
+  }
+}
+
+sdk.onPosition<Round[]>((p) => {
+  if (!p.needMove) return
+
+  const key = getPositionKey(p)
+
+  if (key === processingKey) return
+
+  const existingIndex = positionQueue.findIndex(
+    (q) => getPositionKey(q) === key,
+  )
+  if (existingIndex !== -1) return
+
+  const sameTableIndex = positionQueue.findIndex((q) => q.tableId === p.tableId)
+  if (sameTableIndex !== -1) {
+    positionQueue[sameTableIndex] = p
+  } else {
+    positionQueue.push(p)
+  }
+
+  processQueue()
+})
 
 const connect = () => {
   sdk
@@ -35,25 +89,6 @@ sdk.onDisconnect((code) => {
   setTimeout(() => {
     connect()
   }, 2000)
-})
-
-sdk.onPosition<Round[]>(async (p) => {
-  if (p.needMove && !thinkingInProgress) {
-    thinkingInProgress = true
-
-    ai.getBestMove(p)
-      .then((move) => {
-        sdk.move(p.tableId!, move).catch((err) => {
-          console.error(`Error making move "${move}"`, err)
-        })
-      })
-      .catch((err) => {
-        console.error('Error getting best move:', err)
-      })
-      .finally(() => {
-        thinkingInProgress = false
-      })
-  }
 })
 
 connect()
