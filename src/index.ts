@@ -2,15 +2,49 @@ import BotSDK from './sdk/arena-bot-node-sdk.js'
 import { TableState, type IBotSDK, type PositionInfo } from './sdk/IBotSDK.ts'
 
 import type { GamePosition } from './ai/types.ts'
-import AI from './ai/opus/index.ts'
 import type { RpsAI } from './ai/RpsAI.ts'
-import { TOKEN } from './conf.ts'
+import { TOKEN, AI } from './conf.ts'
+
+// Dynamic AI import
+const aiModules = {
+  opus: () => import('./ai/opus/index.js'),
+  codex: () => import('./ai/codex/index.js'),
+  random: () => import('./ai/random/index.js'),
+  swe15: () => import('./ai/swe15/index.js'),
+}
+
+// Type for AI constructor
+type AIConstructor = new (sdk: IBotSDK) => RpsAI
+
+const loadAIClass = async (aiName: string): Promise<AIConstructor> => {
+  const moduleLoader = aiModules[aiName as keyof typeof aiModules]
+  if (!moduleLoader) {
+    throw new Error(`Unknown AI: ${aiName}`)
+  }
+  const module = await moduleLoader()
+  return module.default as AIConstructor
+}
 
 console.clear()
 
 const sdk: IBotSDK = new BotSDK()
 
-const ai: RpsAI = new AI(sdk)
+// Initialize AI dynamically
+let ai: RpsAI
+
+const initializeAI = async () => {
+  if (!AI) {
+    throw new Error('AI environment variable is not set')
+  }
+  const AIClass = await loadAIClass(AI)
+  ai = new AIClass(sdk)
+  console.info(`AI ${AI} initialized successfully`)
+}
+
+initializeAI().catch((err) => {
+  console.error('Failed to initialize AI:', err)
+  process.exit(1)
+})
 
 type PositionItem = PositionInfo<GamePosition>
 
@@ -31,6 +65,7 @@ const getPositionKey = (p: PositionItem): string => {
 
 const processQueue = async () => {
   if (processingKey !== null || positionQueue.length === 0) return
+  if (!ai) return // AI not yet initialized
 
   const p = positionQueue.shift()!
   processingKey = getPositionKey(p)
@@ -48,7 +83,7 @@ const processQueue = async () => {
 
 sdk.onPosition<GamePosition>((p) => {
   if (p.state === TableState.Finished || p.state === TableState.Canceled) {
-    ai.onGameEnd(p.tableId)
+    if (ai) ai.onGameEnd(p.tableId)
     return
   }
   if (!p.needMove) return
@@ -77,7 +112,7 @@ const connect = () => {
     .connect(TOKEN!, { games: [14] })
     .then((v) => {
       console.log('Connectded! User info: ', v)
-      ai.init(v.login)
+      if (ai) ai.init(v.login)
     })
     .catch((err) => {
       console.log(`Can't connect`, err)

@@ -1,4 +1,4 @@
-import { type GamePosition, type Round, Move } from './types.ts'
+import { type GamePosition, Move } from './types.ts'
 import type { IBotSDK, PositionInfo } from '../sdk/IBotSDK.ts'
 
 export abstract class RpsAI {
