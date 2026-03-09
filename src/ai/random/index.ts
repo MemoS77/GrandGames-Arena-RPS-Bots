@@ -7,12 +7,6 @@ export default class RandomRpsAI extends RpsAI {
 
   override async init(botLogin: string) {
     super.init(botLogin)
-    this.sdk.onMessage((tableId: number, _message: string, login: string) => {
-      this.sdk.message(
-        tableId,
-        `Sorry, ${login}, I don't understand your messages...`,
-      )
-    })
 
     // Clear greeting sent flag
     setInterval(

@@ -437,10 +437,6 @@ export default class OpusRpsAI extends RpsAI {
   override async init(botLogin: string) {
     super.init(botLogin)
 
-    this.sdk.onMessage((tableId: number, _message: string, login: string) => {
-      this.sdk.message(tableId, `Good luck, ${login}! 🎯`)
-    })
-
     // Cleanup expired stats every hour
     setInterval(
       () => {

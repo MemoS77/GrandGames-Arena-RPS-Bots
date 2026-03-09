@@ -332,13 +332,6 @@ export default class CodexRpsAI extends RpsAI {
 
   override async init(botLogin: string): Promise<void> {
     await super.init(botLogin)
-    this.sdk.onMessage((_tableId, message, login) => {
-      if (login === this.botLogin) return
-      this.sdk.message(
-        _tableId,
-        `I hear you, ${login}! Let my strategy adapt to you.`,
-      )
-    })
 
     this.cleanupTimer = setInterval(
       () => this.cleanupStaleProfiles(),

@@ -72,6 +72,8 @@ const processQueue = async () => {
   processingKey = getPositionKey(p)
 
   try {
+    const randomDelay = Math.random() * 2000 + 300
+    await new Promise((resolve) => setTimeout(resolve, randomDelay))
     const move = await ai.getBestMove(p)
     await sdk.move(p.tableId!, move)
   } catch (err) {
