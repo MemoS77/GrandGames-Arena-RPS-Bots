@@ -1,5 +1,5 @@
 import BotSDK from './sdk/arena-bot-node-sdk.js'
-import type { IBotSDK, PositionInfo } from './sdk/IBotSDK.ts'
+import { TableState, type IBotSDK, type PositionInfo } from './sdk/IBotSDK.ts'
 import dotenv from 'dotenv'
 import type { Round } from './ai/types.ts'
 import SimplestRpsAI from './ai/simplest/index.ts'
@@ -51,6 +51,10 @@ const processQueue = async () => {
 }
 
 sdk.onPosition<Round[]>((p) => {
+  if (p.state === TableState.Finished || p.state === TableState.Canceled) {
+    ai.onGameEnd(p.tableId)
+    return
+  }
   if (!p.needMove) return
 
   const key = getPositionKey(p)

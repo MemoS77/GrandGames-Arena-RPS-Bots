@@ -12,4 +12,5 @@ export abstract class RpsAI {
 
   // Get best move for current position
   abstract getBestMove(pos: PositionInfo<Round[]>): Promise<Move>
+  abstract onGameEnd(tableId: number): void
 }

@@ -49,4 +49,9 @@ export default class SimplestRpsAI extends RpsAI {
 
     return move as Move
   }
+
+  override onGameEnd(tableId: number): void {
+    console.log('Game ended for table', tableId)
+    this.greetingSent.delete(tableId)
+  }
 }
