@@ -77,7 +77,7 @@ const connect = () => {
     .connect(token, { games: [14] })
     .then((v) => {
       console.log('Connectded! User info: ', v)
-      ai.init()
+      ai.init(v.login)
     })
     .catch((err) => {
       console.log(`Can't connect`, err)

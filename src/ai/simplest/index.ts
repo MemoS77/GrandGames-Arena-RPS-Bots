@@ -5,7 +5,8 @@ import type { Move, Round } from '../types.ts'
 export default class SimplestRpsAI extends RpsAI {
   private greetingSent = new Set<number>()
 
-  override async init() {
+  override async init(botLogin: string) {
+    super.init(botLogin)
     this.sdk.onMessage((tableId: number, _message: string, login: string) => {
       this.sdk.message(
         tableId,
@@ -26,10 +27,14 @@ export default class SimplestRpsAI extends RpsAI {
     if (!this.greetingSent.has(pos.tableId)) {
       this.greetingSent.add(pos.tableId)
 
+      const enemy = pos.players.find(
+        (p) => p !== null && p.login !== this.botLogin,
+      )
+
       setTimeout(() => {
         this.sdk.message(
           pos.tableId,
-          `Hello! I am a simple bot. I will play randomly.`,
+          `Hello ${enemy?.login}! I am a simple bot. I will play randomly.`,
         )
       }, 1000)
     }
