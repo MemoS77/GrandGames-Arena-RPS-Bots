@@ -1,9 +1,9 @@
 import BotSDK from './sdk/arena-bot-node-sdk.js'
-import { TableState, type IBotSDK, type PositionInfo } from './sdk/IBotSDK.ts'
+import { TableState, type IBotSDK, type PositionInfo } from './sdk/IBotSDK.js'
 
-import type { GamePosition } from './ai/types.ts'
-import type { RpsAI } from './ai/RpsAI.ts'
-import { TOKEN, AI } from './conf.ts'
+import type { GamePosition } from './ai/types.js'
+import type { RpsAI } from './ai/RpsAI.js'
+import { TOKEN, AI } from './conf.js'
 
 // Dynamic AI import
 const aiModules = {

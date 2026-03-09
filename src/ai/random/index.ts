@@ -1,6 +1,6 @@
-import type { PositionInfo } from '../../sdk/IBotSDK.ts'
+import type { PositionInfo } from '../../sdk/IBotSDK.js'
 import { RpsAI } from '../RpsAI.js'
-import type { GamePosition, Move, Round } from '../types.ts'
+import type { GamePosition, Move, Round } from '../types.js'
 
 export default class RandomRpsAI extends RpsAI {
   private greetingSent = new Set<number>()

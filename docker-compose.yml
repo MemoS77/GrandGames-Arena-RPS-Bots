@@ -1,6 +1,7 @@
 services:
   bot-opus:
     build: .
+    image: rps-bot:latest
     environment:
       - TOKEN=${TOKEN_OPUS}
       - AI=opus
@@ -13,7 +14,8 @@ services:
     restart: unless-stopped
 
   bot-codex:
-    build: .
+    image: rps-bot:latest
+    pull_policy: never
     environment:
       - TOKEN=${TOKEN_CODEX}
       - AI=codex
@@ -26,7 +28,8 @@ services:
     restart: unless-stopped
 
   bot-random:
-    build: .
+    image: rps-bot:latest
+    pull_policy: never
     environment:
       - TOKEN=${TOKEN_RANDOM}
       - AI=random
@@ -39,7 +42,8 @@ services:
     restart: unless-stopped
 
   bot-swe15:
-    build: .
+    image: rps-bot:latest
+    pull_policy: never
     environment:
       - TOKEN=${TOKEN_SWE15}
       - AI=swe15
@@ -52,7 +56,8 @@ services:
     restart: unless-stopped
 
   bot-gpt:
-    build: .
+    image: rps-bot:latest
+    pull_policy: never
     environment:
       - TOKEN=${TOKEN_GPT}
       - AI=gpt

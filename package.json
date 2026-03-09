@@ -8,6 +8,7 @@
     "build": "tsc",
     "dev": "tsx src/index.ts",
     "start": "node dist/index.js",
+    "start:docker": "docker compose --env-file .env.docker up --build",
     "typecheck": "tsc --noEmit"
   },
   "keywords": [],

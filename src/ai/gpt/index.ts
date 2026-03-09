@@ -1,7 +1,7 @@
-import { IS_DEBUG } from '../../conf.ts'
-import type { PositionInfo } from '../../sdk/IBotSDK.ts'
+import { IS_DEBUG } from '../../conf.js'
+import type { PositionInfo } from '../../sdk/IBotSDK.js'
 import { RpsAI } from '../RpsAI.js'
-import type { GamePosition, Move, Round } from '../types.ts'
+import type { GamePosition, Move, Round } from '../types.js'
 
 type MoveChar = 'r' | 'p' | 's'
 

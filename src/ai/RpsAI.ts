@@ -1,5 +1,5 @@
-import { type GamePosition, Move } from './types.ts'
-import type { IBotSDK, PositionInfo } from '../sdk/IBotSDK.ts'
+import { type GamePosition, Move } from './types.js'
+import type { IBotSDK, PositionInfo } from '../sdk/IBotSDK.js'
 
 export abstract class RpsAI {
   protected botLogin: string = '-'

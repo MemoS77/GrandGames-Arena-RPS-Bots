@@ -1,7 +1,7 @@
-import { IS_DEBUG } from '../../conf.ts'
-import type { PositionInfo } from '../../sdk/IBotSDK.ts'
+import { IS_DEBUG } from '../../conf.js'
+import type { PositionInfo } from '../../sdk/IBotSDK.js'
 import { RpsAI } from '../RpsAI.js'
-import { Move, type GamePosition, type Round } from '../types.ts'
+import { Move, type GamePosition, type Round } from '../types.js'
 
 const STATS_TTL_MS = 2 * 24 * 60 * 60 * 1000 // 2 days
 const PERFORMANCE_WINDOW = 16
