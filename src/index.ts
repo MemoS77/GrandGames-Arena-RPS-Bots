@@ -2,7 +2,7 @@ import BotSDK from './sdk/arena-bot-node-sdk.js'
 import { TableState, type IBotSDK, type PositionInfo } from './sdk/IBotSDK.ts'
 import dotenv from 'dotenv'
 import type { GamePosition } from './ai/types.ts'
-import AI from './ai/swe15/index.ts'
+import AI from './ai/opus/index.ts'
 import type { RpsAI } from './ai/RpsAI.ts'
 
 dotenv.config()
