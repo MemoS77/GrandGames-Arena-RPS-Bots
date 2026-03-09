@@ -11,6 +11,7 @@ const aiModules = {
   codex: () => import('./ai/codex/index.js'),
   random: () => import('./ai/random/index.js'),
   swe15: () => import('./ai/swe15/index.js'),
+  gpt: () => import('./ai/gpt/index.js'),
 }
 
 // Type for AI constructor
