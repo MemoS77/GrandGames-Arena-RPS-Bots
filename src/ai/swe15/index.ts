@@ -1,6 +1,6 @@
 import type { PositionInfo } from '../../sdk/IBotSDK.ts'
 import { RpsAI } from '../RpsAI.js'
-import type { GamePosition, Move, Round } from '../types.ts'
+import { Move, type GamePosition, type Round } from '../types.ts'
 
 const IS_DEBUG = true
 
@@ -11,9 +11,8 @@ interface PlayerStats {
   patternFrequency: { [key: string]: number }
 }
 
-// Тип для статистики только реальных ходов (без 'h')
+// Тип для статистики только реальных ходов (без Move.Hidden)
 type RealMove = Extract<Move, 'r' | 'p' | 's'>
-type RealMoveStats = { [key in RealMove]: number }
 
 export default class NormalRpsAI extends RpsAI {
   private playerStats = new Map<string, PlayerStats>()
@@ -86,24 +85,48 @@ export default class NormalRpsAI extends RpsAI {
     const stats = this.getPlayerStats(playerLogin)
     stats.lastUpdate = Date.now()
 
-    // Извлекаем ходы противника из истории раундов
-    const enemyMoves: Move[] = []
-    moves.forEach((round) => {
-      // Определяем индекс противника (противоположный индекс бота)
-      const enemyIndex = botIndex === 0 ? 1 : 0
-      const enemyMove = round[enemyIndex]
-      if (enemyMove && enemyMove !== 'h') {
-        enemyMoves.push(enemyMove)
-        stats.moveHistory.push(enemyMove)
-        stats.moveFrequency[enemyMove]++
-      }
-    })
+    // Находим последний завершенный раунд (где оба хода не null)
+    const completedRounds = moves.filter(
+      (round) =>
+        round[0] !== null &&
+        round[1] !== null &&
+        round[0] !== Move.Hidden &&
+        round[1] !== Move.Hidden,
+    )
 
-    // Анализируем паттерны (последовательности из 2-х ходов)
-    for (let i = 1; i < enemyMoves.length; i++) {
-      const pattern = `${enemyMoves[i - 1]}${enemyMoves[i]}`
-      stats.patternFrequency[pattern] =
-        (stats.patternFrequency[pattern] || 0) + 1
+    if (completedRounds.length === 0) {
+      return // Нет завершенных раундов
+    }
+
+    // Берем только самый последний завершенный раунд
+    const lastRound = completedRounds[completedRounds.length - 1]
+    if (!lastRound) {
+      return
+    }
+
+    // Определяем индекс противника
+    const enemyIndex = botIndex === 0 ? 1 : 0
+    const enemyMove = lastRound[enemyIndex]
+
+    if (enemyMove && enemyMove !== Move.Hidden) {
+      stats.moveHistory.push(enemyMove)
+      stats.moveFrequency[enemyMove]++
+      console.log(
+        'Updated stats for',
+        playerLogin,
+        stats.moveHistory.length,
+        stats.moveFrequency,
+      )
+
+      // Анализируем паттерн (последние 2 хода)
+      const realMoves = stats.moveHistory.filter(
+        (m) => m !== Move.Hidden,
+      ) as RealMove[]
+      if (realMoves.length >= 2) {
+        const pattern = `${realMoves[realMoves.length - 2]}${realMoves[realMoves.length - 1]}`
+        stats.patternFrequency[pattern] =
+          (stats.patternFrequency[pattern] || 0) + 1
+      }
     }
   }
 
@@ -121,7 +144,9 @@ export default class NormalRpsAI extends RpsAI {
     }
 
     // 1. Анализ частоты ходов (только реальные ходы)
-    const realMoves = stats.moveHistory.filter((m) => m !== 'h') as RealMove[]
+    const realMoves = stats.moveHistory.filter(
+      (m) => m !== Move.Hidden,
+    ) as RealMove[]
     const totalMoves = realMoves.length
 
     if (totalMoves > 0) {
@@ -135,7 +160,7 @@ export default class NormalRpsAI extends RpsAI {
     // 2. Анализ паттернов - если последний ход известен, предсказываем следующий
     const lastMove = stats.moveHistory[stats.moveHistory.length - 1]
 
-    if (lastMove && lastMove !== 'h') {
+    if (lastMove && lastMove !== Move.Hidden) {
       for (const [pattern, frequency] of Object.entries(
         stats.patternFrequency,
       )) {
@@ -182,14 +207,14 @@ export default class NormalRpsAI extends RpsAI {
   private getCounterMove(predictedMove: Move): Move {
     // Камень побеждает ножницы, ножницы побеждают бумагу, бумага побеждает камень
     switch (predictedMove) {
-      case 'r':
-        return 'p' // Бумага побеждает камень
-      case 'p':
-        return 's' // Ножницы побеждают бумагу
-      case 's':
-        return 'r' // Камень побеждает ножницы
+      case Move.Rock:
+        return Move.Paper // Бумага побеждает камень
+      case Move.Paper:
+        return Move.Scissors // Ножницы побеждают бумагу
+      case Move.Scissors:
+        return Move.Rock // Камень побеждает ножницы
       default:
-        return 'r'
+        return Move.Rock
     }
   }
 
@@ -202,18 +227,12 @@ export default class NormalRpsAI extends RpsAI {
 
     if (!enemy) {
       // Если противник не найден, играем случайно (не должео быть такогог вообще, сопреник есть всегда)
-      const moves = ['r', 'p', 's']
+      const moves = [Move.Rock, Move.Paper, Move.Scissors]
       return moves[Math.floor(Math.random() * 3)] as Move
     }
 
     // Обновляем статистику на основе завершенных раундов
     if (pos.botIndex !== null) {
-      console.log(
-        'Updating player stats',
-        enemy.login,
-        pos.position,
-        pos.botIndex,
-      )
       this.updatePlayerStats(enemy.login, pos.position.rounds, pos.botIndex)
     }
 
@@ -227,16 +246,25 @@ export default class NormalRpsAI extends RpsAI {
       console.log(`Scissors: ${(predictions.s * 100).toFixed(1)}%`)
     }
 
-    // Находим наиболее вероятный ход противника
+    // Находим наиболее вероятные ходы противника
     let maxProb = 0
-    let predictedMove: RealMove = 'r'
+    const bestMoves: RealMove[] = []
 
     for (const move of ['r', 'p', 's'] as RealMove[]) {
       if (predictions[move] > maxProb) {
         maxProb = predictions[move]
-        predictedMove = move
+        bestMoves.length = 0 // Очищаем массив
+        bestMoves.push(move)
+      } else if (Math.abs(predictions[move] - maxProb) < 0.05) {
+        // Если разница < 5%
+        bestMoves.push(move)
       }
     }
+
+    // Выбираем случайный из лучших ходов
+    const predictedMove = bestMoves[
+      Math.floor(Math.random() * bestMoves.length)
+    ] as Move
 
     // Возвращаем контр-ход
     return this.getCounterMove(predictedMove)

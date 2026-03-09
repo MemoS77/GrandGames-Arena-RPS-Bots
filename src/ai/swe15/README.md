@@ -1,4 +1,4 @@
-# NormalRpsAI by SWE-1.5
+# RpsAI by SWE-1.5
 
 ## Основные принципы:
 
