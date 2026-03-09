@@ -9,3 +9,7 @@ export const Move = {
 export type Move = (typeof Move)[keyof typeof Move]
 
 export type Round = [Move | null, Move | null]
+
+export type GamePosition = {
+  rounds: Round[]
+}

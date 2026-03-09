@@ -1,4 +1,4 @@
-import { type Round, Move } from './types.ts'
+import { type GamePosition, type Round, Move } from './types.ts'
 import type { IBotSDK, PositionInfo } from '../sdk/IBotSDK.ts'
 
 export abstract class RpsAI {
@@ -11,6 +11,6 @@ export abstract class RpsAI {
   }
 
   // Get best move for current position
-  abstract getBestMove(pos: PositionInfo<Round[]>): Promise<Move>
+  abstract getBestMove(pos: PositionInfo<GamePosition>): Promise<Move>
   abstract onGameEnd(tableId: number): void
 }

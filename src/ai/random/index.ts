@@ -1,8 +1,8 @@
 import type { PositionInfo } from '../../sdk/IBotSDK.ts'
 import { RpsAI } from '../RpsAI.js'
-import type { Move, Round } from '../types.ts'
+import type { GamePosition, Move, Round } from '../types.ts'
 
-export default class SimplestRpsAI extends RpsAI {
+export default class RandomRpsAI extends RpsAI {
   private greetingSent = new Set<number>()
 
   override async init(botLogin: string) {
@@ -23,7 +23,7 @@ export default class SimplestRpsAI extends RpsAI {
     )
   }
 
-  private sendGreeting(pos: PositionInfo<Round[]>) {
+  private sendGreeting(pos: PositionInfo<GamePosition>) {
     if (!this.greetingSent.has(pos.tableId)) {
       this.greetingSent.add(pos.tableId)
       const enemy = pos.players.find(
@@ -39,7 +39,7 @@ export default class SimplestRpsAI extends RpsAI {
     }
   }
 
-  override async getBestMove(pos: PositionInfo<Round[]>): Promise<Move> {
+  override async getBestMove(pos: PositionInfo<GamePosition>): Promise<Move> {
     this.sendGreeting(pos)
 
     //console.log('Get move for:', pos)
@@ -51,7 +51,6 @@ export default class SimplestRpsAI extends RpsAI {
   }
 
   override onGameEnd(tableId: number): void {
-    console.log('Game ended for table', tableId)
     this.greetingSent.delete(tableId)
   }
 }

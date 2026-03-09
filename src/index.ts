@@ -1,8 +1,8 @@
 import BotSDK from './sdk/arena-bot-node-sdk.js'
 import { TableState, type IBotSDK, type PositionInfo } from './sdk/IBotSDK.ts'
 import dotenv from 'dotenv'
-import type { Round } from './ai/types.ts'
-import SimplestRpsAI from './ai/simplest/index.ts'
+import type { GamePosition, Round } from './ai/types.ts'
+import AI from './ai/normal/index.ts'
 import type { RpsAI } from './ai/RpsAI.ts'
 
 dotenv.config()
@@ -11,12 +11,12 @@ console.clear()
 
 const sdk: IBotSDK = new BotSDK()
 
-const ai: RpsAI = new SimplestRpsAI(sdk)
+const ai: RpsAI = new AI(sdk)
 
 const token = process.env.JWT
 if (!token) throw 'Please, set JWT in .env file'
 
-type PositionItem = PositionInfo<Round[]>
+type PositionItem = PositionInfo<GamePosition>
 
 const positionQueue: PositionItem[] = []
 let processingKey: string | null = null
@@ -50,7 +50,7 @@ const processQueue = async () => {
   }
 }
 
-sdk.onPosition<Round[]>((p) => {
+sdk.onPosition<GamePosition>((p) => {
   if (p.state === TableState.Finished || p.state === TableState.Canceled) {
     ai.onGameEnd(p.tableId)
     return
