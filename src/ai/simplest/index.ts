@@ -23,10 +23,9 @@ export default class SimplestRpsAI extends RpsAI {
     )
   }
 
-  override async getBestMove(pos: PositionInfo<Round[]>): Promise<Move> {
+  private sendGreeting(pos: PositionInfo<Round[]>) {
     if (!this.greetingSent.has(pos.tableId)) {
       this.greetingSent.add(pos.tableId)
-
       const enemy = pos.players.find(
         (p) => p !== null && p.login !== this.botLogin,
       )
@@ -36,8 +35,15 @@ export default class SimplestRpsAI extends RpsAI {
           pos.tableId,
           `Hello ${enemy?.login}! I am a simple bot. I will play randomly.`,
         )
-      }, 1000)
+      }, 0)
     }
+  }
+
+  override async getBestMove(pos: PositionInfo<Round[]>): Promise<Move> {
+    this.sendGreeting(pos)
+
+    //console.log('Get move for:', pos)
+
     const moves = ['r', 'p', 's']
     const move = moves[Math.floor(Math.random() * 3)]!
 
