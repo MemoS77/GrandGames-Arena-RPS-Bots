@@ -111,12 +111,15 @@ export default class NormalRpsAI extends RpsAI {
     if (enemyMove && enemyMove !== Move.Hidden) {
       stats.moveHistory.push(enemyMove)
       stats.moveFrequency[enemyMove]++
-      console.log(
-        'Updated stats for',
-        playerLogin,
-        stats.moveHistory.length,
-        stats.moveFrequency,
-      )
+
+      if (IS_DEBUG) {
+        console.log(
+          'Updated stats for',
+          playerLogin,
+          stats.moveHistory.length,
+          stats.moveFrequency,
+        )
+      }
 
       // Анализируем паттерн (последние 2 хода)
       const realMoves = stats.moveHistory.filter(
@@ -139,7 +142,20 @@ export default class NormalRpsAI extends RpsAI {
       s: 0.33,
     }
 
+    if (IS_DEBUG) {
+      console.log(`\n=== PREDICTION ANALYSIS for ${playerLogin} ===`)
+      console.log(
+        `Initial predictions: R:${(predictions.r * 100).toFixed(1)}% P:${(predictions.p * 100).toFixed(1)}% S:${(predictions.s * 100).toFixed(1)}%`,
+      )
+      console.log(`Move history length: ${stats.moveHistory.length}`)
+    }
+
     if (stats.moveHistory.length < 3) {
+      if (IS_DEBUG) {
+        console.log(
+          `❌ Not enough data for analysis (${stats.moveHistory.length} < 3)`,
+        )
+      }
       return predictions // Недостаточно данных для анализа
     }
 
@@ -150,10 +166,23 @@ export default class NormalRpsAI extends RpsAI {
     const totalMoves = realMoves.length
 
     if (totalMoves > 0) {
+      if (IS_DEBUG) {
+        console.log(`\n📊 1. FREQUENCY ANALYSIS:`)
+        console.log(`Total moves: ${totalMoves}`)
+        console.log(
+          `Move frequency: R:${stats.moveFrequency.r} P:${stats.moveFrequency.p} S:${stats.moveFrequency.s}`,
+        )
+      }
+
       // Добавляем вес на основе частоты ходов
       for (const move of ['r', 'p', 's'] as RealMove[]) {
         const frequency = stats.moveFrequency[move] / totalMoves
         predictions[move] = predictions[move] * 0.5 + frequency * 0.5 // 50% базовая вероятность + 50% частота
+      }
+      if (IS_DEBUG) {
+        console.log(
+          `After frequency: R:${(predictions.r * 100).toFixed(1)}% P:${(predictions.p * 100).toFixed(1)}% S:${(predictions.s * 100).toFixed(1)}%`,
+        )
       }
     }
 
@@ -161,25 +190,58 @@ export default class NormalRpsAI extends RpsAI {
     const lastMove = stats.moveHistory[stats.moveHistory.length - 1]
 
     if (lastMove && lastMove !== Move.Hidden) {
+      if (IS_DEBUG) {
+        console.log(`\n🔄 2. PATTERN ANALYSIS:`)
+        console.log(`Last move: ${lastMove}`)
+        console.log(`Pattern frequency:`, stats.patternFrequency)
+      }
+
+      let patternsFound = 0
       for (const [pattern, frequency] of Object.entries(
         stats.patternFrequency,
       )) {
         if (pattern.startsWith(lastMove)) {
           const nextMove = pattern[1] as RealMove
+          if (IS_DEBUG) {
+            console.log(
+              `✅ Found pattern: ${pattern} -> ${nextMove} (frequency: ${frequency})`,
+            )
+          }
           // Увеличиваем вес для паттернов
-          predictions[nextMove] += frequency * 0.2
+          predictions[nextMove] += frequency * 0.5 // Увеличили с 0.2 на 0.5
+          patternsFound++
         }
+      }
+
+      if (patternsFound === 0 && IS_DEBUG) {
+        console.log(`❌ No patterns found starting with ${lastMove}`)
+      }
+      if (IS_DEBUG) {
+        console.log(
+          `After patterns: R:${(predictions.r * 100).toFixed(1)}% P:${(predictions.p * 100).toFixed(1)}% S:${(predictions.s * 100).toFixed(1)}%`,
+        )
       }
     }
 
     // 3. Анти-циклический анализ - люди часто меняют стратегию после проигрыша
     if (realMoves.length >= 3) {
       const recentMoves = realMoves.slice(-3)
+
+      if (IS_DEBUG) {
+        console.log(`\n🚫 3. ANTI-CYCLIC ANALYSIS:`)
+        console.log(`Recent moves: [${recentMoves.join(', ')}]`)
+      }
+
       const hasRepeatingPattern = recentMoves.every(
         (move) => move === recentMoves[0],
       )
 
       if (hasRepeatingPattern && recentMoves[0]) {
+        if (IS_DEBUG) {
+          console.log(
+            `✅ Detected repeating pattern: ${recentMoves[0]} repeated 3 times`,
+          )
+        }
         // Если игрок повторяет один ход, вероятно он скоро его изменит
         predictions[recentMoves[0]] *= 0.7
         // Увеличиваем вероятности других ходов
@@ -189,6 +251,13 @@ export default class NormalRpsAI extends RpsAI {
         otherMoves.forEach((move) => {
           predictions[move] *= 1.15
         })
+        if (IS_DEBUG) {
+          console.log(
+            `After anti-cyclic: R:${(predictions.r * 100).toFixed(1)}% P:${(predictions.p * 100).toFixed(1)}% S:${(predictions.s * 100).toFixed(1)}%`,
+          )
+        }
+      } else if (IS_DEBUG) {
+        console.log(`❌ No repeating pattern detected`)
       }
     }
 
@@ -199,6 +268,13 @@ export default class NormalRpsAI extends RpsAI {
     )
     for (const move of ['r', 'p', 's'] as RealMove[]) {
       predictions[move] = predictions[move] / Math.max(total, 1)
+    }
+
+    if (IS_DEBUG) {
+      console.log(
+        `\n🎯 FINAL PREDICTIONS: R:${(predictions.r * 100).toFixed(1)}% P:${(predictions.p * 100).toFixed(1)}% S:${(predictions.s * 100).toFixed(1)}%`,
+      )
+      console.log(`=== END ANALYSIS ===\n`)
     }
 
     return predictions
