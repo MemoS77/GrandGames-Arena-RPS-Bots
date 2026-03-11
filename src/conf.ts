@@ -3,6 +3,8 @@ dotenv.config()
 export const IS_DEBUG = process.env.DEBUG === 'true'
 export const TOKEN = process.env.TOKEN
 export const AI = process.env.AI
+// undefined allowed, will use default
+export const SERVER: string | null = process.env.SERVER ?? null
 export const AI_LIST = ['opus', 'codex', 'random', 'swe15', 'gpt']
 
 if (!TOKEN) {

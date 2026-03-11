@@ -3,7 +3,8 @@ import { TableState, type IBotSDK, type PositionInfo } from './sdk/IBotSDK.js'
 
 import type { GamePosition } from './ai/types.js'
 import type { RpsAI } from './ai/RpsAI.js'
-import { TOKEN, AI } from './conf.js'
+import { TOKEN, AI, SERVER } from './conf.js'
+import log from './log.js'
 
 // Dynamic AI import
 const aiModules = {
@@ -72,10 +73,10 @@ const processQueue = async () => {
   processingKey = getPositionKey(p)
 
   try {
-    const randomDelay = Math.random() * 2000 + 300
-    await new Promise((resolve) => setTimeout(resolve, randomDelay))
     const move = await ai.getBestMove(p)
-    await sdk.move(p.tableId!, move)
+    log('Making move:', move)
+    const newPos = await sdk.move(p.tableId!, move)
+    log('Move made successfully. New position: ', newPos)
   } catch (err) {
     console.error('Error processing position:', err)
   } finally {
@@ -85,6 +86,7 @@ const processQueue = async () => {
 }
 
 sdk.onPosition<GamePosition>((p) => {
+  log('Position received in onPosition:', p)
   if (p.state === TableState.Finished || p.state === TableState.Canceled) {
     if (ai) ai.onGameEnd(p.tableId)
     return
@@ -92,7 +94,6 @@ sdk.onPosition<GamePosition>((p) => {
   if (!p.needMove) return
 
   const key = getPositionKey(p)
-
   if (key === processingKey) return
 
   const existingIndex = positionQueue.findIndex(
@@ -103,8 +104,10 @@ sdk.onPosition<GamePosition>((p) => {
   const sameTableIndex = positionQueue.findIndex((q) => q.tableId === p.tableId)
   if (sameTableIndex !== -1) {
     positionQueue[sameTableIndex] = p
+    log('Position updated in queue', p.tableId)
   } else {
     positionQueue.push(p)
+    log('Position added to queue', p.tableId)
   }
 
   processQueue()
@@ -112,18 +115,18 @@ sdk.onPosition<GamePosition>((p) => {
 
 const connect = () => {
   sdk
-    .connect(TOKEN!, { games: [14] })
+    .connect(TOKEN!, { games: [14], serverUrl: SERVER })
     .then((v) => {
-      console.log('Connectded! User info: ', v)
+      log('Connectded! User info: ', v)
       if (ai) ai.init(v.login)
     })
     .catch((err) => {
-      console.log(`Can't connect`, err)
+      log(`Can't connect`, err)
     })
 }
 
 sdk.onDisconnect((code) => {
-  console.log(`Disconnected with code: ${code}`)
+  log(`Disconnected with code: ${code}`)
   setTimeout(() => {
     connect()
   }, 2000)

@@ -1,6 +1,6 @@
 import type { PositionInfo } from '../../sdk/IBotSDK.js'
 import { RpsAI } from '../RpsAI.js'
-import type { GamePosition, Move, Round } from '../types.js'
+import type { GamePosition, Move } from '../types.js'
 
 export default class RandomRpsAI extends RpsAI {
   private greetingSent = new Set<number>()
@@ -17,19 +17,17 @@ export default class RandomRpsAI extends RpsAI {
     )
   }
 
-  private sendGreeting(pos: PositionInfo<GamePosition>) {
+  private async sendGreeting(pos: PositionInfo<GamePosition>) {
     if (!this.greetingSent.has(pos.tableId)) {
       this.greetingSent.add(pos.tableId)
       const enemy = pos.players.find(
         (p) => p !== null && p.login !== this.botLogin,
       )
 
-      setTimeout(() => {
-        this.sdk.message(
-          pos.tableId,
-          `Hello ${enemy?.login}! I am a simple bot. I will play randomly.`,
-        )
-      }, 0)
+      this.sdk.message(
+        pos.tableId,
+        `Hello ${enemy?.login}! I am a simple bot. I will play randomly.`,
+      )
     }
   }
 

@@ -1,12 +1,12 @@
-// Not used enum for erasable syntax in node support
+// Using const object instead of enum for better Node.js compatibility
 
 export const PlayerState = {
-  Passive: 0, // Not moving at the current moment
-  Active: 1, // Moving at the current moment
-  Winner: 2, // Won
-  Looser: 3, // Lost
-  Drawer: 4, // Draw
-  Unused: 5, // Not considered, for example left at the beginning, etc.
+  Passive: 0, // Not currently making a move
+  Active: 1, // Currently making a move
+  Winner: 2, // Won the game
+  Looser: 3, // Lost the game
+  Drawer: 4, // Game ended in a draw
+  Unused: 5, // Not participating (e.g., left at the start)
 } as const
 
 export type PlayerState = (typeof PlayerState)[keyof typeof PlayerState]
@@ -28,17 +28,17 @@ export type UserInfo = {
 export type PositionInfo<T = object> = {
   moveNumber: number
   position: T
-  // Whether time per move is fixed. If yes, the bot can think for all this time. If no, need to calculate acceptable thinking time.
+  // Whether the time per move is fixed. If true, the bot can use all available time. If false, calculate appropriate thinking time.
   fixedMoveTime: boolean
-  // Additional time in seconds (used only if fixedMoveTime = false)
+  // Additional time in seconds (only used when fixedMoveTime = false)
   addTime?: number
-  // Bot index
+  // Bot's position index
   botIndex: number | null
-  // Whether the bot should make a move now
+  // Whether the bot needs to make a move now
   needMove: boolean
-  // Fixed game identifier on GrandGames Arena
+  // Unique game identifier on GrandGames Arena
   game: number
-  // Table number
+  // Table identifier
   tableId: number
 
   state: TableState
@@ -54,26 +54,36 @@ export type PositionInfo<T = object> = {
 
 export type ConnectionOptions = {
   games: number[]
-  serverUrl?: string
+  serverUrl?: string | null
 }
 
 export interface IBotSDK {
-  // Connect and set supported games. return bot uid and login if token is valid
+  // Connect and specify supported games. Returns bot uid and login if token is valid.
   connect(token: string, options: ConnectionOptions): Promise<UserInfo>
 
-  // Connection was lost
+  // Called when the connection is lost.
   onDisconnect(handler: (code: number) => void): void
 
-  // Triggered on any table updates, not only position changed.
+  // Triggered on any table update, not just position changes (time updates, state changes, new players, etc.).
+  // Use the needMove flag to determine if you need to make a move now.
+  // Be careful when analyzing moves, as a new position may arrive before you respond to the previous one.
   onPosition<T>(handler: (data: PositionInfo<T>) => void): void
 
+  /**
+   * Called when another player (not you) sends a message in the table chat.
+   */
   onMessage(
     handler: (tableId: number, text: string, login: string) => void,
   ): void
 
-  // Do move
-  move(tableId: number, move: string): Promise<void>
+  /**
+   * Make a move. Throws an error if a previous move on this table is still pending. Returns the new position after the move.
+   * In many games, interim states may be sent via onPosition shortly after your move (e.g., point calculation animations, card movements).
+   * In others, like chess, the final position is sent immediately without interim states.
+   * Listen for new states after making a move and in onPosition handler. Note: onPosition is not triggered immediately after your own move.
+   */
+  move(tableId: number, move: string): Promise<PositionInfo>
 
-  // Send chat message
-  message(tableId: number, text: string): void
+  // Send a chat message. Avoid spam - sending too many messages in a short time will be rejected by the server.
+  message(tableId: number, text: string): Promise<void>
 }
