@@ -10,7 +10,7 @@ You can create youown bots for play in this game using SDK. Create new folder in
 4. Create new account ended at Bot on https://arena.grandgames.net
 5. Get token from profile page
 6. Rename .env.example to .env and fill JWT and AI (your custom name from AI_LIST)
-7. Run `npm run dev` for local testing or build `npm run build` and run with `npm start`
+7. Run `npm run dev` for local testing or build with `npm run build` and run with `npm start`
 8. If you want share your AI, create pull request to this repository.
 
 ## Additional info
