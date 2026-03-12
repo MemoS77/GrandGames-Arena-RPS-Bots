@@ -9,11 +9,13 @@ You can create youown bots for play in this game using SDK. Create new folder in
 3. Change AI_LIST.ts AI_LIST var and add your bot.
 4. Create new account ended at Bot on https://arena.grandgames.net
 5. Get token from profile page
-6. Rename .env.example to .env and fill it with your credentials
+6. Rename .env.example to .env and fill JWT and AI (your custom name from AI_LIST)
 7. `npm run dev`
 8. If you want share your AI, create pull request to this repository.
 
 ## Additional info
+
+Existing ai: codex, gpt, opus, swe15 created by AI with same prompt.
 
 You can use docker to create multiple AI and test them in the same time. See docker-compose.yml
 
