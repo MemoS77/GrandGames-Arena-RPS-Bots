@@ -1,4 +1,4 @@
-import BotSDK from './sdk/arena-bot-node-sdk.js'
+import BotSDK from './sdk/arena-bot-sdk.js'
 import { TableState, type IBotSDK, type PositionInfo } from './sdk/IBotSDK.js'
 
 import type { GamePosition } from './ai/types.js'
