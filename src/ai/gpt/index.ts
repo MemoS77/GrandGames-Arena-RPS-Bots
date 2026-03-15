@@ -1,5 +1,5 @@
 import { IS_DEBUG } from '../../conf.js'
-import type { PositionInfo } from '../../sdk/IBotSDK.js'
+import type { PositionInfo } from 'gga-bots'
 import { RpsAI } from '../RpsAI.js'
 import type { GamePosition, Move, Round } from '../types.js'
 
