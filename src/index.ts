@@ -1,10 +1,8 @@
-import BotSDK from './sdk/arena-bot-sdk.js'
-import { TableState, type IBotSDK, type PositionInfo } from './sdk/IBotSDK.js'
-
 import type { GamePosition } from './ai/types.js'
 import type { RpsAI } from './ai/RpsAI.js'
 import { TOKEN, AI, SERVER } from './conf.js'
 import log from './log.js'
+import { BotSDK, GameId, TableState, type PositionInfo } from 'gga-bots'
 
 // Dynamic AI import
 const aiModules = {
@@ -16,7 +14,7 @@ const aiModules = {
 }
 
 // Type for AI constructor
-type AIConstructor = new (sdk: IBotSDK) => RpsAI
+type AIConstructor = new (sdk: BotSDK) => RpsAI
 
 const loadAIClass = async (aiName: string): Promise<AIConstructor> => {
   const moduleLoader = aiModules[aiName as keyof typeof aiModules]
@@ -29,7 +27,7 @@ const loadAIClass = async (aiName: string): Promise<AIConstructor> => {
 
 console.clear()
 
-const sdk: IBotSDK = new BotSDK()
+const sdk = new BotSDK()
 
 // Initialize AI dynamically
 let ai: RpsAI
@@ -115,7 +113,7 @@ sdk.onPosition<GamePosition>((p) => {
 
 const connect = () => {
   sdk
-    .connect(TOKEN!, { games: [14], serverUrl: SERVER })
+    .connect(TOKEN!, [GameId.RPS], { serverUrl: SERVER })
     .then((v) => {
       log('Connectded! User info: ', v)
       if (ai) ai.init(v.login)
